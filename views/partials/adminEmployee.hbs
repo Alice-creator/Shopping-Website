@@ -1,0 +1,342 @@
+<style>
+    @keyframes drop-in-fade-out {
+        0% {
+            opacity: 0;
+            visibility: visible;
+            transform: translate3d(0, -200%, 0);
+        }
+
+        12% {
+            transform: translate3d(0, 0, 0);
+        }
+
+        20% {
+            opacity: 1;
+        }
+
+        70% {
+            opacity: 1;
+            visibility: visible;
+            transform: translate3d(0, 0, 0);
+        }
+
+        80% {
+            opacity: 0;
+        }
+
+        100% {
+            visibility: hidden;
+            transform: translate3d(75%, 0, 0);
+        }
+    }
+
+    .animate--drop-in-fade-out {
+        animation: drop-in-fade-out 3.5s 0.4s cubic-bezier(.32, 1.75, .65, .91);
+    }
+
+
+    @-webkit-keyframes drop-in-fade-out {
+        0% {
+            opacity: 0;
+            visibility: visible;
+            -webkit-transform: translate3d(0, -200%, 0);
+        }
+
+        12% {
+            -webkit-transform: translate3d(0, 0, 0);
+        }
+
+        20% {
+            opacity: 1;
+        }
+
+        70% {
+            opacity: 1;
+            visibility: visible;
+            -webkit-transform: translate3d(0, 0, 0);
+        }
+
+        80% {
+            opacity: 0;
+        }
+
+        100% {
+            visibility: hidden;
+            -webkit-transform: translate3d(75%, 0, 0);
+        }
+    }
+
+    @-moz-keyframes drop-in-fade-out {
+        /* Same as above, replace -webkit- with -moz- */
+    }
+
+    @-o-keyframes drop-in-fade-out {
+        /* Same as above, replace -webkit- with -o- */
+    }
+
+    @-ms-keyframes drop-in-fade-out {
+        /* Same as above, replace -webkit- with -ms- */
+    }
+
+    .flash {
+        display: block;
+        position: fixed;
+        bottom: 20px;
+        right: 25px;
+        width: 350px;
+        padding: 20px 25px 20px 85px;
+        font-size: 16px;
+        font-weight: 400;
+        color: #ff4d4d;
+        background-color: #FFF;
+        border: 2px solid #ff4d4d;
+        border-radius: 2px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+        opacity: 0;
+    }
+
+    .flash.success {
+        border-color: #51a626 !important;
+        color: #51a626 !important;
+    }
+
+    .flash__icon.success {
+        background: #51a626 !important;
+    }
+
+    .flash__icon {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 1.8em;
+        height: 100%;
+        padding: 0 0.4em;
+        background-color: #ff4d4d;
+        color: #FFF;
+        font-size: 36px;
+        font-weight: 300;
+        transform: translate(0, -50%);
+    }
+
+    .flash__icon .icon {
+        position: absolute;
+        top: 50%;
+        transform: translate(0, -50%);
+    }
+</style>
+
+<div class="container-fluid px-4 pt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="bg-light p-4 pl-5">
+                <div class="d-none d-md-flex col-10 ms-4">
+                    <input id="search" class="form-control border-0 w-50" type="search" placeholder="username@example.com">
+                    <div style="border-right: 1px solid #ccc; margin-left: 50px"></div>
+                    <button onclick="addEmployee()" class="btn btn-success" style="margin-left: 50px">Add new employee</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid pt-4 px-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="flash" id="flashMessage">
+            </div>
+            <div id="employee-list" style="min-height: 450px;" class="bg-light rounded h-100 p-4">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th style="width: 30%;" scope="col">Full Name</th>
+                            <th scope="col">Username</th>
+                            <th style="width: 25%;" scope="col">Gmail</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employees">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="/js/script.js"></script>
+<script>
+    document.title = 'Admin - Employee Management'
+    // /api/admin/employees
+    const jwt = getJwtCookie();
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`
+    }
+
+
+    fetch('/api/admin/employees', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${jwt}`
+        },
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Fetch employee data failed');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const employees = data.data;
+            const table = document.querySelector('#employees');
+            let html = '';
+            employees.forEach((employee, idx) => {
+                html += `
+                <tr>
+                    <th scope="row">${idx + 1}</th>
+                    <td>${employee.FullName}</td>
+                    <td>${employee.UserName}</td>
+                    <td>${employee.Gmail}</td>
+                    <td>
+                        <button onclick="viewInfo()" class="btn btn-primary"> <i class="fa fa-info-circle" aria-hidden="true"></i> </button>
+                        <button onclick="edit('${employee._id}')" class="btn btn-warning"> <i class="fas fa-edit"></i> </button>
+                        <button class="btn btn-success"> <i class="fas fa-dollar-sign"></i> </button>
+                        <button onclick="locked('${employee._id}', ${employee.Status})" class="btn btn-danger"> <i class="fa fa-solid fa-lock"></i> </button>
+                        <button onclick="resendMail('${employee.Gmail}')" class="btn btn-info" > <i class="fa fa-envelope" aria-hidden="true"></i> </button>
+                    </td>
+                </tr>
+            `
+            });
+
+            table.innerHTML = html;
+
+        })
+        .catch(error => {
+            console.error('Login error', error);
+        });
+
+    const edit = (userId) => {
+        
+    }
+
+    const addEmployee = () => {
+        document.getElementById('employee-list').innerHTML = `
+            <h2>Add new Employee</h2>
+            <div class="mb-2">
+                <label for="customer-name" class="form-label">Employee's name</label>
+                <input class="form-control" id="customer-name">
+            </div>
+            <div class="mb-2">
+                <label for="customer-gmail" class="form-label">Employee's gmail</label>
+                <input class="form-control" id="customer-gmail">
+            </div>
+            <button onclick="addNewEmployee()" class="btn btn-primary">Add</button>
+            <button onclick="cancelAdding()" class="btn btn-danger">Cancel</button>
+        `;
+    }
+
+    const addNewEmployee = () => {
+        const UserFullName = document.getElementById('customer-name').value;
+        const UserGmail = document.getElementById('customer-gmail').value;
+
+        const credentials = { UserGmail, UserFullName };
+    
+
+        fetch('/api/admin/createUser', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(credentials)
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+            console.log(response)
+            throw new Error(response.status);
+        });
+
+    }
+
+    const cancelAdding = () => {
+        window.location.reload();
+    }
+
+    const resendMail = (UserGmail) => {
+        // /api/admin/mailbox
+        fetch('/api/admin/mailbox', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            },
+            body: JSON.stringify({UserGmail})
+        })
+            .then(response => {
+                const flash = document.querySelector('#flashMessage');
+                let type = 'success';
+                let message = 'Send validation mail successfully'
+                if (!response.ok) {
+                    type = 'failed';
+                    message = 'Send validation mail failed'
+                    throw new Error('Send validation went wrong');
+                }
+                let html = `
+                <div class="flash__icon ${type}">
+                    ${type === 'success' ?
+                        '<i class="icon fa fa-check"></i>' :
+                        '<i class="icon fa fa-times-circle-o"></i>'
+                    }
+                </div>
+                <p>${message}</p>
+            `;
+                flash.innerHTML = html;
+                flash.classList.add(type);
+                flash.classList.add("animate--drop-in-fade-out");
+                // Remove the animation class after 3 seconds (adjust as needed)
+                setTimeout(function () {
+                    flash.classList.remove("animate--drop-in-fade-out");
+                }, 3000);
+            });
+
+    }
+
+    const locked = (id, status) => {
+        const api = `/api/admin/lockAndUnlock/${id}`;
+        fetch(api, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            },
+            body: JSON.stringify({"Request": status === "active" ? "lock" : "active"})
+        })
+            .then(response => {
+                const flash = document.querySelector('#flashMessage');
+                let type = 'success';
+                let message = 'Successfully'
+                if (!response.ok) {
+                    type = 'failed';
+                    message = 'Failed'
+                    throw new Error('Failed');
+                }
+                let html = `
+                <div class="flash__icon ${type}">
+                    ${type === 'success' ?
+                        '<i class="icon fa fa-check"></i>' :
+                        '<i class="icon fa fa-times-circle-o"></i>'
+                    }
+                </div>
+                <p>${message}</p>
+            `;
+                flash.innerHTML = html;
+                flash.classList.add(type);
+                flash.classList.add("animate--drop-in-fade-out");
+                // Remove the animation class after 3 seconds (adjust as needed)
+                setTimeout(function () {
+                    flash.classList.remove("animate--drop-in-fade-out");
+                }, 3000);
+            });
+    }
+</script>
